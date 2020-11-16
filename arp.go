@@ -5,17 +5,20 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"log"
+	"net"
+	"sync"
+	"time"
+
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
-	"log"
-	"net"
-	"strings"
-	"sync"
-	"time"
 )
 
-const arpPingInterval = 5 * time.Second
+const (
+	FlagLowerUp     = 1 << 16
+	arpPingInterval = 5 * time.Second
+)
 
 func scanIface(ctx context.Context, wg *sync.WaitGroup, iface net.Interface) {
 	defer wg.Done()
@@ -187,11 +190,9 @@ func getInterfaces() ([]net.Interface, error) {
 			continue
 		}
 
-		// workaround for Linux, since "LOWER_UP" flag is not exposed
-		if strings.HasPrefix(iface.Name, "docker") || strings.HasPrefix(iface.Name, "virbr") {
+		if !isPhysicalNIC(iface) {
 			continue
 		}
-
 		ifaces = append(ifaces, iface)
 	}
 	return ifaces, nil
